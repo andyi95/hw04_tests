@@ -8,7 +8,7 @@ class ProfileTest(TestCase):
     def setUp(self):
         self.client = Client()
         self.username = User.objects.create_user(
-            username="HaroldFinch",
+            username='HaroldFinch',
             email='j.reese@contoso.com',
             password='qweerty12'
         )
@@ -43,7 +43,7 @@ class ProfileTest(TestCase):
         self.assertEqual(response.status_code, 200)
         # Заодно проверим основной профиль
         response = self.client.get(f'/{self.username}/')
-        self.assertEqual(response.status_code, 200, msg="here we are")
+        self.assertEqual(response.status_code, 200, msg='here we are')
 
     def test_new_post_auth(self):
         # Логинимся, создаем пост и проверяем наличие в index
@@ -60,7 +60,7 @@ class ProfileTest(TestCase):
         # Проверим, отображается-ли пост на странице сообщества
         response = self.client.get(
             reverse(
-                'group_posts',
+                'group',
                 kwargs={'slug': self.group.slug}
             ))
         self.assertContains(response, post_text)

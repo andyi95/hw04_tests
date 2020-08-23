@@ -70,7 +70,7 @@ def post_edit(request, username, post_id):
     return render(
         request,
         'posts/new_post.html',
-        {"form": form, 'edit': True, 'post': post}
+        {'form': form, 'edit': True, 'post': post}
     )
 
 
@@ -97,7 +97,7 @@ def post_view(request, username, post_id):
     posts_count = posts.count()
     return render(
         request,
-        "posts/post.html",
+        'posts/post.html',
         {'profile': user_profile,
          'post': post,
          'post_count': posts_count}
