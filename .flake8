@@ -1,7 +1,0 @@
-[flake8]
-exclude=.git,_pycache_,docs,tests,migrations,venv,old
-application-import-names = posts,tests,users,yatube
-[flake8:import-order]
-import-order-style=pep8
-[flake8:quotes]
-inline-quotes=''
