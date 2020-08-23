@@ -1,5 +1,6 @@
-import pytest
 import re
+
+import pytest
 from django.contrib.admin.sites import site
 from django.contrib.auth import get_user_model
 from django.db.models import fields
@@ -165,7 +166,7 @@ class TestGroupView:
         group = post_with_group.group
         html = response.content.decode()
 
-        html_template = get_template('group.html').template.source
+        html_template = get_template('posts/group.html').template.source
 
         assert search_refind(r'{%\s*for\s+.+in.*%}', html_template), \
             'Отредактируйте HTML-шаблон, используйте тег цикла'
