@@ -1,27 +1,13 @@
-{% extends "base.html" %}
+{% extends "includes/base.html" %}
 {% block title %} Записи сообщества {{ group.title }} {% endblock %}
 {% block content %}
 {% load user_filters %}
 <h1>{{ group }}</h1>
 <p>{{ group.description }}</p>
      {% for post in page %}
-      <div  class="card-body card mb-3 mt-1 shadow-sm">
-      <p class="card-text">
-    Автор:<a name="post_{{ post.id }}" href="{% url 'profile' post.author.username %}">
-         <strong class="d-block text-gray-dark">{{ post.author }}</strong>
-                        </a>
-          <p>{{ post.text|linebreaksbr }}</p>
-    </p>
-   {% if user == post.author %}
-                                <a class="btn btn-sm text-muted" href="{% url 'post_edit' post.author.username post.id %}"
-                                        role="button">
-                                        Редактировать
-                                </a>
-                                {% endif %}
-    <small class="text-muted">Дата публикации: {{ post.pub_date|date:"d M Y" }}</small>
-    </div>
+      {% include 'posts/post_item.html' with post=post %}
     {% endfor %}
         {% if page.has_other_pages %}
-        {% include "paginator.html" with items=page paginator=paginator%}
+        {% include "includes/paginator.html" with items=page paginator=paginator%}
     {% endif %}
 {% endblock %}

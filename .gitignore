@@ -21,3 +21,4 @@ posts/static/
 
 db.sqlite3
 .flake8
+requirements.txt

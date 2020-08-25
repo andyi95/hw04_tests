@@ -1,6 +1,10 @@
-{% extends "base.html" %}
+{% extends "includes/base.html" %}
 {% block title %}
+    {% if edit is True %}
+    Редактировать пост
+    {% else %}
     Создать новый пост
+    {% endif %}
 {% endblock %}
 {% block content %}
 {% load user_filters %}
