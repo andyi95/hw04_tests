@@ -1,7 +1,7 @@
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from .models import Group, Post, User
+from posts.models import Group, Post, User
 
 
 class TestProfile(TestCase):
@@ -25,6 +25,13 @@ class TestProfile(TestCase):
             200,
             msg='Профиль пользователя не найден'
         )
+
+    def test_404(self):
+        self.client.force_login(self.user)
+        response = self.client.get(f'{self.user.username}/256')
+        self.assertEqual(response.status_code, 404,
+                         msg='Несоответствующий код ответа на несуществующую '
+                             'страницу')
 
 
 class TestPostCreaton(TestCase):
@@ -60,7 +67,8 @@ class TestPostCreaton(TestCase):
         if paginator is not None:
             self.assertEqual(
                 paginator.count, 1,
-                msg='Paginator работает некорректно'
+                msg='Несоответствие количества записей'
+                    'илиPaginator работает некорректно'
             )
             post = response.context['page'][0]
         else:
@@ -94,35 +102,20 @@ class TestPostCreaton(TestCase):
         self.test_post = Post.objects.create(text=self.post_text,
                                              group=self.group,
                                              author=self.user)
-        post = self.get_page(page='index')
-        self.assertEqual(
-            post,
-            self.test_post,
-            msg='Запись не найдена на главной странице'
-        )
-        self.assertEqual(post.text, self.test_post.text,
-                         msg='Текст поста не соответсвует заданному')
-        post = self.get_page(page='group', pArgs={'slug': self.group.slug})
-        self.assertEqual(
-            post,
-            self.test_post,
-            msg='Запись не найдена на странице сообщества'
-        )
-        post = self.get_page(page='profile',
-                             pArgs={'username': self.user.username})
-        self.assertEqual(
-            post,
-            self.test_post,
-            msg='Запись не найдена на странице пользователя'
-        )
-        post = self.get_page(page='post', pArgs={
-            'username': self.user.username, 'post_id': self.test_post.pk
-        })
-        self.assertEqual(
-            post,
-            self.test_post,
-            msg='Запись не найдена на странице поста'
-        )
+        pages = {
+            'index': {},
+            'group': {'slug': self.group.slug},
+            'profile': {'username': self.user.username},
+            'post': {
+                'username': self.user.username,
+                'post_id': self.test_post.pk
+            }
+        }
+        for page in pages:
+            with self.subTest(page=page, msg=f'Запись не найдена'
+                                             f' на странице {page}'):
+                post = self.get_page(page, pages[page])
+                self.assertEqual(post, self.test_post)
 
     # Создаем пост в БД, редактируем через http и сверяем содержимое на всех
     # связанных страницах
@@ -147,8 +140,6 @@ class TestPostCreaton(TestCase):
         )
         self.assertEqual(response.status_code, 200,
                          msg='Сервер вернул неожиданный ответ')
-
-        # Проверяем соответствие изменений в БД...
         post = Post.objects.select_related(
             'author',
             'group'
@@ -158,6 +149,16 @@ class TestPostCreaton(TestCase):
         self.assertEqual(post.count(), 1,
                          msg='Количество постов не соответствует заданным')
         post = post.last()
+        pages = {
+            'index': {},
+            'group': {'slug': self.group2.slug},
+            'profile': {'username': self.user.username},
+            'post': {
+                'username': self.user.username,
+                'post_id': post.pk
+            }
+        }
+        # Проверяем соответствие изменений в БД...
         self.assertEqual(post.text, self.post_edited_text,
                          msg='Текст поста не соотвествует заданному или '
                              'отсутствует')
@@ -167,25 +168,12 @@ class TestPostCreaton(TestCase):
                          msg='Сообщество поста не соответствует заданному')
         # А также на соответствующих страницах. Сверяем объектами из
         # контекста, поскольку поля объектов уже проверены выше
-        post = self.get_page(page='index')
-        self.assertEqual(
-            post.text, self.post_edited_text,
-            msg='Измененная запись не найдена на главной странице'
-        )
-        post = self.get_page(page='group', pArgs={'slug': self.group2.slug})
-        self.assertEqual(post.text, self.post_edited_text,
-                         msg='Измененная запись не найдена на странице '
-                             'сообщества')
-        post = self.get_page(page='profile',
-                             pArgs={'username': self.user.username})
-        self.assertEqual(post.text, self.post_edited_text,
-                         msg='Измененная запись не найдена в профиле '
-                             'пользователя')
-        post = self.get_page(page='post', pArgs={
-            'username': self.user.username, 'post_id': self.post.pk
-        })
-        self.assertEqual(post.text, self.post_edited_text,
-                         msg='Изменная запись не найдена на странице поста')
+        for page in pages:
+            with self.subTest(page=page,
+                              msg=f'Измененная запись не найдена на странице '
+                                  f'{page}'):
+                post = self.get_page(page, pages[page])
+                self.assertEqual(post.text, self.post_edited_text)
 
     # Создаем пост через БД, далее логинимся под вторым пользователем и
     # пытаемся изменить текст и сообщество через http,
