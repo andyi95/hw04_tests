@@ -52,10 +52,9 @@ def post_edit(request, username, post_id):
     if request.user != post.author:
         return redirect('post', username=post.author, post_id=post_id)
     form = PostForm(request.POST or None, instance=post)
-    if request.method == 'POST':
-        if form.is_valid():
-            form.save()
-            return redirect('post', username=post.author, post_id=post_id)
+    if form.is_valid():
+        form.save()
+        return redirect('post', username=username, post_id=post_id)
     return render(
         request,
         'posts/new_post.html',
@@ -65,10 +64,7 @@ def post_edit(request, username, post_id):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    posts = Post.objects.select_related(
-        'author',
-        'group'
-    ).filter(author=author).all()
+    posts = author.posts.all()
     paginator = Paginator(posts, 10)
     page_num = request.GET.get('page')
     page = paginator.get_page(page_num)
@@ -83,14 +79,10 @@ def profile(request, username):
 
 def post_view(request, username, post_id):
     user_profile = get_object_or_404(User, username=username)
-    post = get_object_or_404(Post, id=post_id)
-    posts = Post.objects.filter(
-        author=user_profile).order_by('-pub_date').all()
-    posts_count = posts.count()
+    post = user_profile.posts.get(pk=post_id)
     return render(
         request,
         'posts/post.html',
         {'profile': user_profile,
-         'post': post,
-         'post_count': posts_count}
+         'post': post}
     )
