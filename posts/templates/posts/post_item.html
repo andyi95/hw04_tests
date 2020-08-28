@@ -1,9 +1,17 @@
 <div class="card mb-3 mt-1 shadow-sm">
         <div class="card-body">
-                <p class="card-text">
-                        <a href="{% url 'profile' post.author.username %}"><strong class="d-block text-gray-dark">@{{ post.author.username }}</strong></a>
+                <div class="card-text">
+                <p class=".d-inline-flex h5 text-gray-dark mb-2">
+                        <a href="{% url 'profile' post.author.username %}">@{{ post.author.username }}</a>
+        {% if post.group %}
+        <a class="float-right" href="{% url 'group' post.group.slug %}">
+                #{{ post.group.title }}
+        </a>
+        {% endif %}</p>
             <p>{{ post.text|linebreaksbr }}</p>
-                </p>
+                </div>
+
+
                 <div class="d-flex justify-content-between align-items-center">
                         <div class="btn-group ">
                                  {% if user == post.author %}
@@ -12,7 +20,9 @@
                 </a>
                 {% endif %}
                         </div>
-                        <small class="text-muted">{{ post.pub_date|date:"d M Y" }}</small>
+                <div class="d-flex justify-content-between align-items-right">
+                <a class="btn btn-sm text-muted" href="{% url 'post' post.author.username post.id %}">
+                    {{ post.pub_date|date:"d M Y" }}</a></div>
                 </div>
         </div>
 </div>
