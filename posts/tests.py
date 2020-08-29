@@ -3,17 +3,14 @@ from django.urls import reverse
 
 from posts.models import Group, Post, User
 
-
 class TestProfile(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
-            username='HaroldFinch',
-            password='qweerty12'
+            username='HaroldFinch'
         )
 
     def test_profile(self):
-        self.client.force_login(self.user)
         response = self.client.get(
             reverse(
                 'profile',
@@ -26,24 +23,15 @@ class TestProfile(TestCase):
             msg='Профиль пользователя не найден'
         )
 
-    def test_404(self):
-        self.client.force_login(self.user)
-        response = self.client.get(f'{self.user.username}/256')
-        self.assertEqual(response.status_code, 404,
-                         msg='Несоответствующий код ответа на несуществующую '
-                             'страницу')
-
-
 class TestPostCreaton(TestCase):
     def setUp(self):
         self.client = Client()
+        self.client2 = Client()
         self.user = User.objects.create_user(
-            username='HaroldFinch',
-            password='qweerty12'
+            username='HaroldFinch'
         )
         self.user2 = User.objects.create_user(
-            username='JohnReese',
-            password='qweerty12'
+            username='JohnReese'
         )
         self.client.force_login(self.user)
         self.group = Group.objects.create(
@@ -57,45 +45,51 @@ class TestPostCreaton(TestCase):
         self.post_text = 'Only the paranoid survive'
         self.post_edited_text = 'No, not your rules.'
         self.client.force_login(self.user)
+        self.client2.force_login(self.user2)
 
     # Вынесли метод для получения объекта поста из страниц сайта
+    # Упустил момент, что TestCase принудительно выполняет только методы с
+    # test в начале сигнатуры метода :)
     def get_page(self, page, pArgs={}):
-        if page is None:
-            pass
         response = self.client.get(reverse(page, kwargs=pArgs))
         paginator = response.context.get('paginator')
         if paginator is not None:
             self.assertEqual(
                 paginator.count, 1,
                 msg='Несоответствие количества записей'
-                    'илиPaginator работает некорректно'
+                    'или Paginator работает некорректно'
             )
             post = response.context['page'][0]
         else:
             post = response.context['post']
         return post
 
+    # Отдельный общий метод сверки всех полей, вывода соответсвующих
+    # сообщений об ошибках и получения собственно поста на выходе
+    def check_equality(self, e_posts=None, text=None, user=None, group=None):
+        self.assertEqual(e_posts.count(), 1,
+                         msg='Количество постов не соответствует заданным')
+        e_post = e_posts.last()
+        self.assertEqual(e_post.text, text,
+                         msg='Текст поста не соотвествует заданному или '
+                             'отсутствует')
+        self.assertEqual(e_post.author.username, user.username,
+                         msg='Автор поста не соотвествует заданному')
+        self.assertEqual(e_post.group.slug, group.slug,
+                         msg='Сообщество поста не соответствует заданному')
+        return e_post
+
     # В  следующем тесте создаем пост через HTTP и сверяем соответствие в
     # БД
     def test_new_post_auth(self):
-        self.client.post(reverse('new_post'),
-                         {'text': self.post_text, 'group': self.group.id})
-        post = Post.objects.select_related(
-            'author',
-            'group'
-        ).filter(
-            author=self.user.id
-        )
-        self.assertEqual(post.count(), 1,
-                         msg='Количество постов не соответствует заданным')
-        post = post.last()
-        self.assertEqual(post.text, self.post_text,
-                         msg='Текст поста не соотвествует заданному или '
-                             'отсутствует')
-        self.assertEqual(post.author, self.user,
-                         msg='Автор поста не соотвествует заданному')
-        self.assertEqual(post.group, self.group,
-                         msg='Сообщество поста не соответствует заданному')
+        response = self.client.post(reverse('new_post'),
+                                    {
+                                        'text': self.post_text,
+                                        'group': self.group.id
+                                    }, follow=True)
+        self.assertRedirects(response, reverse('index'))
+        posts = Post.objects.all()
+        self.check_equality(posts, self.post_text, self.user, self.group)
 
     # Создаем пост в БД и сверяем отображение через http запросы к сайту
     def test_post_display(self):
@@ -115,7 +109,9 @@ class TestPostCreaton(TestCase):
             with self.subTest(page=page, msg=f'Запись не найдена'
                                              f' на странице {page}'):
                 post = self.get_page(page, pages[page])
-                self.assertEqual(post, self.test_post)
+                self.assertEqual(post.text, self.test_post.text)
+                self.assertEqual(post.group.slug, self.group.slug)
+                self.assertEqual(post.author.username, self.user.username)
 
     # Создаем пост в БД, редактируем через http и сверяем содержимое на всех
     # связанных страницах
@@ -140,15 +136,10 @@ class TestPostCreaton(TestCase):
         )
         self.assertEqual(response.status_code, 200,
                          msg='Сервер вернул неожиданный ответ')
-        post = Post.objects.select_related(
-            'author',
-            'group'
-        ).filter(
-            author=self.user.id
-        )
-        self.assertEqual(post.count(), 1,
-                         msg='Количество постов не соответствует заданным')
-        post = post.last()
+        posts = Post.objects.all()
+        # Проверяем соответствие объекта из БД с заданными и получаем сам пост
+        post = self.check_equality(posts, self.post_edited_text, self.user,
+                                   self.group2)
         pages = {
             'index': {},
             'group': {'slug': self.group2.slug},
@@ -158,16 +149,9 @@ class TestPostCreaton(TestCase):
                 'post_id': post.pk
             }
         }
-        # Проверяем соответствие изменений в БД...
-        self.assertEqual(post.text, self.post_edited_text,
-                         msg='Текст поста не соотвествует заданному или '
-                             'отсутствует')
-        self.assertEqual(post.author, self.user,
-                         msg='Автор поста не соотвествует заданному')
-        self.assertEqual(post.group, self.group2,
-                         msg='Сообщество поста не соответствует заданному')
         # А также на соответствующих страницах. Сверяем объектами из
         # контекста, поскольку поля объектов уже проверены выше
+        # Обещаю занести этот кусок в get_page() в hw05! :)
         for page in pages:
             with self.subTest(page=page,
                               msg=f'Измененная запись не найдена на странице '
@@ -183,8 +167,7 @@ class TestPostCreaton(TestCase):
             text=self.post_text,
             author=self.user, group=self.group
         )
-        self.client.force_login(self.user2)
-        response = self.client.post(
+        response = self.client2.post(
             reverse(
                 'post_edit',
                 kwargs={
@@ -203,21 +186,31 @@ class TestPostCreaton(TestCase):
         self.assertRedirects(response, target_url,
                              msg_prefix='Редирект для неверного пользователя '
                                         'работает неправильно')
-        post = Post.objects.get(id=self.post.id)
-        self.assertNotEqual(
-            post.text,
-            self.post_edited_text,
-            msg='Текст поста другого пользователя изменен'
-        )
-        self.assertNotEqual(
-            post.group,
-            self.group2,
-            msg='Сообщество поста другого пользователя изменено'
-        )
-
+        posts = Post.objects.all()
+        # Убедимся, что пост остался в неизменном виде и в БД не появилось
+        # новых постов
+        self.check_equality(posts, self.post_text, self.user, self.group)
+        # И что на страницах сайта также всё в порядке
+        pages = {
+            'profile': {'username': self.user.username},
+            'post': {
+                'username': self.post.author,
+                'post_id': self.post.id
+            }
+        }
+        for page in pages:
+            with self.subTest(page=page,
+                              msg='Пост был несанкционированно изменен'):
+                post = self.get_page(page, pages[page])
+                self.assertNotEqual(post.text, self.post_edited_text)
+        # Убедимся, что не появилось страницы с постом
+        response = self.client.get(
+            reverse('post', args=[self.user2.username, 1]))
+        self.assertEqual(response.status_code, 404)
 
 class TestUnAuthAccess(TestCase):
     def setUp(self):
+        self.client = Client()
         self.post_text = 'Only the paranoid survive'
         self.group = Group.objects.create(
             title='Person of Interest',

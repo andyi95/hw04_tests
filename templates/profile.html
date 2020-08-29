@@ -8,7 +8,7 @@
 
                 <!-- И здесь также вынесли содержимое в отдельный шаблон-->
                 {% for post in page %}
-                    {% include 'posts/post_item.html' with post=post %}
+                    {% include 'includes/post_item.html' with post=post %}
                 {% endfor %}
 
                 {% if page.has_other_pages %}

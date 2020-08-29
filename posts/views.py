@@ -7,7 +7,7 @@ from .models import Group, Post, User
 
 
 def index(request):
-    latest = Post.objects.select_related('group').all()
+    latest = Post.objects.select_related('group', 'author').all()
     paginator = Paginator(latest, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
@@ -38,7 +38,7 @@ def new_post(request):
         return render(
             request,
             'posts/new_post.html',
-            {'form': form, 'edit': False}
+            {'form': form}
         )
     post = form.save(commit=False)
     post.author = request.user
@@ -58,7 +58,7 @@ def post_edit(request, username, post_id):
     return render(
         request,
         'posts/new_post.html',
-        {'form': form, 'edit': True, 'post': post}
+        {'form': form, 'post': post}
     )
 
 
@@ -78,7 +78,7 @@ def profile(request, username):
 
 
 def post_view(request, username, post_id):
-    post = Post.objects.get(author__username=username, pk=post_id)
+    post = get_object_or_404(Post, author__username=username, pk=post_id)
     return render(
         request,
         'posts/post.html',
