@@ -40,9 +40,8 @@ def new_post(request):
             'posts/new_post.html',
             {'form': form}
         )
-    post = form.save(commit=False)
-    post.author = request.user
-    post.save()
+    form.instance.author = request.user
+    form.save()
     return redirect('index')
 
 

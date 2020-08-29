@@ -23,8 +23,8 @@
                             </div>
                         {% endfor %}
                     {% endif %}
-                {% if edit is True %}
-                    <form method="post" enctype="multipart/form-data">
+                {% if post %}
+                    <form method="post">
                 {% else %}
                     <form method="post" action="{% url 'new_post' %}">
                 {% endif %}
